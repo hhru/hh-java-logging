@@ -48,6 +48,11 @@
       <artifactId>logback-gelf</artifactId>
       <version>0.9.6p2</version>
     </dependency>
+    <dependency>
+      <groupId>ru.hh.logback</groupId>
+      <artifactId>logback-utils</artifactId>
+      <version>1.0</version>
+    </dependency>
 
     <dependency>
       <groupId>com.google.guava</groupId>
