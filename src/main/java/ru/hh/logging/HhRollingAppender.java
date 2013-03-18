@@ -1,7 +1,6 @@
 package ru.hh.logging;
 
 import ch.qos.logback.classic.PatternLayout;
-import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.encoder.LayoutWrappingEncoder;
 import ch.qos.logback.core.rolling.DefaultTimeBasedFileNamingAndTriggeringPolicy;
@@ -63,6 +62,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
   public void start() {
     final String propLogdir = context.getProperty("log.dir");
     final String propPattern = context.getProperty("log.pattern");
+    final String propCompress = context.getProperty("log.compress");
 
     if (fileName == null) {
       Preconditions.checkArgument(
@@ -75,7 +75,13 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     if (getRollingPolicy() == null) {
       FixedWindowRollingPolicy rolling = new FixedWindowRollingPolicy();
       rolling.setContext(context);
-      rolling.setFileNamePattern(fileName.replaceFirst("\\.log$", ".log.%i.gz"));
+      final String fileNameEnding;
+      if (propCompress != null && Boolean.valueOf(propCompress.trim()) ) {
+        fileNameEnding = ".%i.gz";
+      } else {
+        fileNameEnding = ".%i";
+      }
+      rolling.setFileNamePattern(fileName + fileNameEnding);
       rolling.setMinIndex(minIndex);
       rolling.setMaxIndex(maxIndex);
       rolling.setParent(this);
@@ -84,13 +90,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     }
 
     if (getTriggeringPolicy() == null) {
-      DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent> triggering = new DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent>() {
-        @Override
-        public boolean isTriggeringEvent(File activeFile, ILoggingEvent event) {
-          // rolling turned off until time-based policy is fixed to roll strictly at 03:00 daily.
-          return false; //super.isTriggeringEvent(activeFile, event);
-        }
-      };
+      DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent> triggering = new DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent>();
       triggering.setContext(context);
       TimeBasedRollingPolicy<ILoggingEvent> rolling = new TimeBasedRollingPolicy<ILoggingEvent>();
       rolling.setContext(context);
