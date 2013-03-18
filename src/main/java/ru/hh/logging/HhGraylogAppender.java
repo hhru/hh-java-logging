@@ -1,7 +1,6 @@
 package ru.hh.logging;
 
 import me.moocar.logbackgelf.GelfAppender;
-import org.slf4j.MDC;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
