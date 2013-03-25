@@ -63,6 +63,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     final String propLogdir = context.getProperty("log.dir");
     final String propPattern = context.getProperty("log.pattern");
     final String propCompress = context.getProperty("log.compress");
+    final String propImmediateFlush = context.getProperty("log.immediateflush");
 
     if (fileName == null) {
       Preconditions.checkArgument(
@@ -114,6 +115,11 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
       layout.setPattern(pattern);
       layout.start();
       encoder.setLayout(layout);
+      if (propImmediateFlush != null && Boolean.valueOf(propImmediateFlush.trim()) ) {
+        encoder.setImmediateFlush(true);
+      } else {
+        encoder.setImmediateFlush(false);
+      }
       setEncoder(encoder);
       encoder.start();
     }
