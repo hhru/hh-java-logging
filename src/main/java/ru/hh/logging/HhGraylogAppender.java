@@ -1,7 +1,7 @@
 package ru.hh.logging;
 
+import ch.qos.logback.classic.LoggerContext;
 import me.moocar.logbackgelf.GelfAppender;
-import org.slf4j.MDC;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,6 +31,12 @@ public class HhGraylogAppender extends GelfAppender {
 
     if (getGraylog2ServerHost() == null) {
       setGraylog2ServerHost(System.getProperty("graylog.host"));
+    }
+    final String propPackagingInfo = context.getProperty("log.packaginginfo");
+    if (propPackagingInfo != null && Boolean.valueOf(propPackagingInfo.trim()) ) {
+      ((LoggerContext) context).setPackagingDataEnabled(true);
+    } else {
+      ((LoggerContext) context).setPackagingDataEnabled(false);
     }
 
     super.start();
