@@ -1,5 +1,6 @@
 package ru.hh.logging;
 
+import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.PatternLayout;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.encoder.LayoutWrappingEncoder;
@@ -64,6 +65,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     final String propPattern = context.getProperty("log.pattern");
     final String propCompress = context.getProperty("log.compress");
     final String propImmediateFlush = context.getProperty("log.immediateflush");
+    final String propPackagingInfo = context.getProperty("log.packaginginfo");
 
     if (fileName == null) {
       Preconditions.checkArgument(
@@ -124,6 +126,11 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
       encoder.start();
     }
 
+    if (propPackagingInfo != null && Boolean.valueOf(propPackagingInfo.trim()) ) {
+      ((LoggerContext) context).setPackagingDataEnabled(true);
+    } else {
+      ((LoggerContext) context).setPackagingDataEnabled(false);
+    }
     super.start();
   }
 
