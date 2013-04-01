@@ -45,7 +45,7 @@ public class HhGraylogAppender extends GelfAppender {
     }
 
     if (!customHost) {
-      setGraylog2ServerHost(System.getProperty("graylog.host"));
+      setGraylog2ServerHost(context.getProperty("graylog.host"));
     }
     final String propPackagingInfo = context.getProperty("log.packaginginfo");
     if (propPackagingInfo != null && Boolean.valueOf(propPackagingInfo.trim()) ) {
