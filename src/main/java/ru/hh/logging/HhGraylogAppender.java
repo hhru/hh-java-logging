@@ -15,12 +15,27 @@ public class HhGraylogAppender extends GelfAppender {
 
   private static final Pattern nameRe = Pattern.compile("^graylog\\.(.+)$");
 
+  private boolean customHost = false;
+  private boolean customFacility = false;
+
+  @Override
+  public void setGraylog2ServerHost(String graylog2ServerHost) {
+    customHost = true;
+    super.setGraylog2ServerHost(graylog2ServerHost);
+  }
+
+  @Override
+  public void setFacility(String facility) {
+    customFacility = true;
+    super.setFacility(facility);
+  }
+
   @Override
   public void start() {
 
     addAdditionalField("request_id:_request_id");
 
-    if (getFacility() == null || getFacility().equals("GELF")) {
+    if (!customFacility) {
       String facility = getName();
       Matcher m = nameRe.matcher(facility);
       if (m.matches()) {
@@ -29,7 +44,7 @@ public class HhGraylogAppender extends GelfAppender {
       setFacility(facility + ".log");
     }
 
-    if (getGraylog2ServerHost() == null) {
+    if (!customHost) {
       setGraylog2ServerHost(System.getProperty("graylog.host"));
     }
     final String propPackagingInfo = context.getProperty("log.packaginginfo");
