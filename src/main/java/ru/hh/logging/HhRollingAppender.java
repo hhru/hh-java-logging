@@ -61,7 +61,11 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
 
   @Override
   public void start() {
-    final String propLogdir = context.getProperty("log.dir");
+    String propLogdir = context.getProperty("log.dir");
+    if (propLogdir == null) {
+      propLogdir = "logs";
+      addWarn("log.dir is not specified, using `" + propLogdir + "'");
+    }
     final String propPattern = context.getProperty("log.pattern");
 
     if (fileName == null) {
