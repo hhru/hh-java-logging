@@ -1,7 +1,7 @@
 package ru.hh.logging;
 
+import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.PatternLayout;
-import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.encoder.LayoutWrappingEncoder;
 import ch.qos.logback.core.rolling.DefaultTimeBasedFileNamingAndTriggeringPolicy;
@@ -9,8 +9,6 @@ import ch.qos.logback.core.rolling.FixedWindowRollingPolicy;
 import ch.qos.logback.core.rolling.RollingFileAppender;
 import ch.qos.logback.core.rolling.TimeBasedRollingPolicy;
 import com.google.common.base.Preconditions;
-
-import java.io.File;
 
 /**
  * Is a combo of {@link RollingFileAppender}, {@link FixedWindowRollingPolicy},
@@ -67,6 +65,9 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
       addWarn("log.dir is not specified, using `" + propLogdir + "'");
     }
     final String propPattern = context.getProperty("log.pattern");
+    final String propCompress = context.getProperty("log.compress");
+    final String propImmediateFlush = context.getProperty("log.immediateflush");
+    final String propPackagingInfo = context.getProperty("log.packaginginfo");
 
     if (fileName == null) {
       Preconditions.checkArgument(
@@ -79,7 +80,13 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     if (getRollingPolicy() == null) {
       FixedWindowRollingPolicy rolling = new FixedWindowRollingPolicy();
       rolling.setContext(context);
-      rolling.setFileNamePattern(fileName.replaceFirst("\\.log$", ".log.%i.gz"));
+      final String fileNameEnding;
+      if (propCompress != null && Boolean.valueOf(propCompress.trim()) ) {
+        fileNameEnding = ".%i.gz";
+      } else {
+        fileNameEnding = ".%i";
+      }
+      rolling.setFileNamePattern(fileName + fileNameEnding);
       rolling.setMinIndex(minIndex);
       rolling.setMaxIndex(maxIndex);
       rolling.setParent(this);
@@ -88,13 +95,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     }
 
     if (getTriggeringPolicy() == null) {
-      DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent> triggering = new DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent>() {
-        @Override
-        public boolean isTriggeringEvent(File activeFile, ILoggingEvent event) {
-          // rolling turned off until time-based policy is fixed to roll strictly at 03:00 daily.
-          return false; //super.isTriggeringEvent(activeFile, event);
-        }
-      };
+      DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent> triggering = new DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent>();
       triggering.setContext(context);
       TimeBasedRollingPolicy<ILoggingEvent> rolling = new TimeBasedRollingPolicy<ILoggingEvent>();
       rolling.setContext(context);
@@ -118,10 +119,20 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
       layout.setPattern(pattern);
       layout.start();
       encoder.setLayout(layout);
+      if (propImmediateFlush != null && Boolean.valueOf(propImmediateFlush.trim()) ) {
+        encoder.setImmediateFlush(true);
+      } else {
+        encoder.setImmediateFlush(false);
+      }
       setEncoder(encoder);
       encoder.start();
     }
 
+    if (propPackagingInfo != null && Boolean.valueOf(propPackagingInfo.trim()) ) {
+      ((LoggerContext) context).setPackagingDataEnabled(true);
+    } else {
+      ((LoggerContext) context).setPackagingDataEnabled(false);
+    }
     super.start();
   }
 
