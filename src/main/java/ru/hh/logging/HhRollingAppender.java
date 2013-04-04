@@ -128,10 +128,8 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
       encoder.start();
     }
 
-    if (propPackagingInfo != null && Boolean.valueOf(propPackagingInfo.trim()) ) {
-      ((LoggerContext) context).setPackagingDataEnabled(true);
-    } else {
-      ((LoggerContext) context).setPackagingDataEnabled(false);
+    if (propPackagingInfo != null) {
+      ((LoggerContext) context).setPackagingDataEnabled(Boolean.valueOf(propPackagingInfo.trim()));
     }
     super.start();
   }
