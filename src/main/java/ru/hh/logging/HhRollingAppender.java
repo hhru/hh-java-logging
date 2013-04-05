@@ -19,6 +19,20 @@ import java.util.Random;
  * <p>Main file is set to {@code $log.dir/appendername.log}. Rolled file is set to {@code $log.dir/appendername.%i.gz}.
  * Layout pattern is set to {@code $log.pattern}.
  *
+ * <p>Other properties, same value for all appenders, but can be overriden by appender attribute (see setter methods).
+ * If not specified as a property or an attribute in logback config, default value is used.
+ *
+ * Property {@code $log.index.min} See FixedWindowRollingPolicy. Default 1.
+ *
+ * Property {@code $log.index.max} See FixedWindowRollingPolicy. Default 1.
+ *
+ * Property {@code $log.roll.compress} To compress or not to compress ? Default false.
+ *
+ * Property {@code $log.immediate.flush} Sync log to disk for each log line. Default false.
+ *
+ * Property {@code $log.collect.packaging.info} Collect packaging info when logging, sometimes
+ * causes big overhead. Default is provided by logback (expected to be always true).
+ *
  */
 public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
 
@@ -33,6 +47,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
   private Integer maxIndex;
   private Boolean compress;
   private Boolean immediateFlush;
+  private Boolean collectPackagingInfo;
 
   private String fileNamePattern = "%d{yyyy-MM-dd}";
   private String pattern;
@@ -87,6 +102,14 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     this.immediateFlush = immediateFlush;
   }
 
+  public Boolean getCollectPackagingInfo() {
+    return collectPackagingInfo;
+  }
+
+  public void setCollectPackagingInfo(boolean collectPackagingInfo) {
+    this.collectPackagingInfo = collectPackagingInfo;
+  }
+
   public String getFileNamePattern() {
     return fileNamePattern;
   }
@@ -138,7 +161,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     immediateFlush = calcParameter(immediateFlush, "log.immediate.flush", DEFAULT_IMMEDIATE_FLUSH);
 
     final String propPattern = context.getProperty("log.pattern");
-    final String propPackagingInfo = context.getProperty("log.packaginginfo");
+    final String propPackagingInfo = context.getProperty("log.collect.packaging.info");
 
     if (fileName == null) {
       Preconditions.checkArgument(
@@ -205,9 +228,12 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
       encoder.start();
     }
 
-    if (propPackagingInfo != null) {
+    if (collectPackagingInfo != null) {
+      ((LoggerContext) context).setPackagingDataEnabled(collectPackagingInfo);
+    } else if (propPackagingInfo != null) {
       ((LoggerContext) context).setPackagingDataEnabled(Boolean.valueOf(propPackagingInfo.trim()));
     }
+
     super.start();
   }
 
