@@ -9,6 +9,8 @@ import ch.qos.logback.core.rolling.FixedWindowRollingPolicy;
 import ch.qos.logback.core.rolling.RollingFileAppender;
 import ch.qos.logback.core.rolling.TimeBasedRollingPolicy;
 import com.google.common.base.Preconditions;
+import org.apache.commons.lang.StringUtils;
+import java.util.Random;
 
 /**
  * Is a combo of {@link RollingFileAppender}, {@link FixedWindowRollingPolicy},
@@ -20,12 +22,40 @@ import com.google.common.base.Preconditions;
  */
 public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
 
-  private int minIndex = 1;
-  private int maxIndex = 3;
+  // keep just one rolled log by default
+  public static final int DEFAULT_MIN_INDEX = 1;
+  public static final int DEFAULT_MAX_INDEX = 1;
+
+  public static final boolean DEFAULT_IMMEDIATE_FLUSH = false;
+  public static final boolean DEFAULT_COMPRESS = false;
+
+  private Integer minIndex;
+  private Integer maxIndex;
+  private Boolean compress;
+  private Boolean immediateFlush;
+
   private String fileNamePattern = "%d{yyyy-MM-dd}";
   private String pattern;
 
-  public int getMinIndex() {
+  // up to 10 mins random offset to start all rolling on the current
+  // box. Needed to avoid simultaneous log rolling on all boxes. Each
+  // next appender increases offset value to have a different start
+  // time in different appenders.
+  private static long nextAppenderRollOffset = new Random().nextInt(600*1000); // 600 seconds
+  // counter used to initialize offset for each logger with a different value
+
+  private static final long MIN_ADDITIONAL_ROLL_OFFSET = 1000; // 1 second
+
+  private final long rollOffset;
+
+  public HhRollingAppender() {
+    synchronized (HhRollingAppender.class) {
+      rollOffset = nextAppenderRollOffset;
+      nextAppenderRollOffset += MIN_ADDITIONAL_ROLL_OFFSET + new Random(nextAppenderRollOffset).nextInt(1000);
+    }
+  }
+
+  public Integer getMinIndex() {
     return minIndex;
   }
 
@@ -33,12 +63,28 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     this.minIndex = minIndex;
   }
 
-  public int getMaxIndex() {
+  public Integer getMaxIndex() {
     return maxIndex;
   }
 
   public void setMaxIndex(int maxIndex) {
     this.maxIndex = maxIndex;
+  }
+
+  public Boolean getCompress() {
+    return compress;
+  }
+
+  public void setCompress(boolean compress) {
+    this.compress = compress;
+  }
+
+  public Boolean getImmediateFlush() {
+    return immediateFlush;
+  }
+
+  public void setImmediateFlush(boolean immediateFlush) {
+    this.immediateFlush = immediateFlush;
   }
 
   public String getFileNamePattern() {
@@ -57,6 +103,28 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     this.pattern = pattern;
   }
 
+  private int calcParameter(Integer parameter, String propName, int defaultValue) {
+    final String propValue = context.getProperty(propName);
+    if (parameter != null) {
+      return parameter;
+    } else if (!StringUtils.isBlank(propValue)) {
+      return Integer.valueOf(propValue.trim());
+    } else {
+      return defaultValue;
+    }
+  }
+
+  private boolean calcParameter(Boolean parameter, String propName, boolean defaultValue) {
+    final String propValue = context.getProperty(propName);
+    if (parameter != null) {
+      return parameter;
+    } else if (!StringUtils.isBlank(propValue)) {
+      return Boolean.valueOf(propValue.trim());
+    } else {
+      return defaultValue;
+    }
+  }
+
   @Override
   public void start() {
     String propLogdir = context.getProperty("log.dir");
@@ -64,9 +132,12 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
       propLogdir = "logs";
       addWarn("log.dir is not specified, using `" + propLogdir + "'");
     }
+    minIndex = calcParameter(minIndex, "log.index.min", DEFAULT_MIN_INDEX);
+    maxIndex = calcParameter(maxIndex, "log.index.max", DEFAULT_MAX_INDEX);
+    compress = calcParameter(compress, "log.roll.compress", DEFAULT_COMPRESS);
+    immediateFlush = calcParameter(immediateFlush, "log.immediate.flush", DEFAULT_IMMEDIATE_FLUSH);
+
     final String propPattern = context.getProperty("log.pattern");
-    final String propCompress = context.getProperty("log.compress");
-    final String propImmediateFlush = context.getProperty("log.immediateflush");
     final String propPackagingInfo = context.getProperty("log.packaginginfo");
 
     if (fileName == null) {
@@ -81,7 +152,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
       FixedWindowRollingPolicy rolling = new FixedWindowRollingPolicy();
       rolling.setContext(context);
       final String fileNameEnding;
-      if (propCompress != null && Boolean.valueOf(propCompress.trim()) ) {
+      if (compress) {
         fileNameEnding = ".%i.gz";
       } else {
         fileNameEnding = ".%i";
@@ -95,7 +166,13 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     }
 
     if (getTriggeringPolicy() == null) {
-      DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent> triggering = new DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent>();
+      DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent> triggering = new DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent>() {
+        @Override
+        protected void computeNextCheck() {
+          super.computeNextCheck();
+          nextCheck += rollOffset;
+        }
+      };
       triggering.setContext(context);
       TimeBasedRollingPolicy<ILoggingEvent> rolling = new TimeBasedRollingPolicy<ILoggingEvent>();
       rolling.setContext(context);
@@ -119,7 +196,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
       layout.setPattern(pattern);
       layout.start();
       encoder.setLayout(layout);
-      if (propImmediateFlush != null && Boolean.valueOf(propImmediateFlush.trim()) ) {
+      if (immediateFlush) {
         encoder.setImmediateFlush(true);
       } else {
         encoder.setImmediateFlush(false);
@@ -135,4 +212,3 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
   }
 
 }
-
