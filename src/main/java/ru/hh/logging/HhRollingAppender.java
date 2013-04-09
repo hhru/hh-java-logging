@@ -26,6 +26,10 @@ import java.util.Random;
  *
  * Property {@code $log.index.max} See FixedWindowRollingPolicy. Default 1.
  *
+ * Property {@code $log.roll.hour} Start roll within 10 min after roll.hour roll.minute. Default hour 0.
+ *
+ * Property {@code $log.roll.minute} Start roll within 10 min after roll.hour roll.minute. Default minute 0.
+ *
  * Property {@code $log.roll.compress} To compress or not to compress ? Default false.
  *
  * Property {@code $log.immediate.flush} Sync log to disk for each log line. Default false.
@@ -40,11 +44,19 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
   public static final int DEFAULT_MIN_INDEX = 1;
   public static final int DEFAULT_MAX_INDEX = 1;
 
+  public static final int DEFAULT_ROLL_HOUR = 0;
+  public static final int DEFAULT_ROLL_MINUTE = 0;
+
   public static final boolean DEFAULT_IMMEDIATE_FLUSH = false;
   public static final boolean DEFAULT_COMPRESS = false;
 
   private Integer minIndex;
   private Integer maxIndex;
+
+  // these two parameters are especially useful for testing
+  private Integer rollHour = null;
+  private Integer rollMinute = null;
+
   private Boolean compress;
   private Boolean immediateFlush;
   private Boolean collectPackagingInfo;
@@ -84,6 +96,28 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
 
   public void setMaxIndex(int maxIndex) {
     this.maxIndex = maxIndex;
+  }
+
+  public Integer getRollHour() {
+    return rollHour;
+  }
+
+  public void setRollHour(int rollHour) {
+    if (rollHour < 0 || rollHour > 23) {
+      throw new IllegalArgumentException("The \"RollHour\" value must be in 0...23 range");
+    }
+    this.rollHour = rollHour;
+  }
+
+  public Integer getRollMinute() {
+    return rollMinute;
+  }
+
+  public void setRollMinute(int rollMinute) {
+    if (rollMinute < 0 || rollMinute > 59) {
+      throw new IllegalArgumentException("The \"RollMinute\" value must be in 0...59 range");
+    }
+    this.rollMinute = rollMinute;
   }
 
   public Boolean getCompress() {
@@ -126,6 +160,10 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     this.pattern = pattern;
   }
 
+  private long calcOffset() {
+    return rollOffset + (rollHour * 60 + rollMinute) * 60 * 1000;
+  }
+
   private int calcParameter(Integer parameter, String propName, int defaultValue) {
     final String propValue = context.getProperty(propName);
     if (parameter != null) {
@@ -157,6 +195,8 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     }
     minIndex = calcParameter(minIndex, "log.index.min", DEFAULT_MIN_INDEX);
     maxIndex = calcParameter(maxIndex, "log.index.max", DEFAULT_MAX_INDEX);
+    rollHour = calcParameter(rollHour, "log.roll.hour", DEFAULT_ROLL_HOUR);
+    rollMinute = calcParameter(rollMinute, "log.roll.minute", DEFAULT_ROLL_MINUTE);
     compress = calcParameter(compress, "log.roll.compress", DEFAULT_COMPRESS);
     immediateFlush = calcParameter(immediateFlush, "log.immediate.flush", DEFAULT_IMMEDIATE_FLUSH);
 
@@ -190,10 +230,14 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
 
     if (getTriggeringPolicy() == null) {
       DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent> triggering = new DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent>() {
+        private final long DAY_MILLIS = 24 * 60 * 60 * 1000;
         @Override
         protected void computeNextCheck() {
           super.computeNextCheck();
-          nextCheck += rollOffset;
+          nextCheck += calcOffset();
+          if (nextCheck - DAY_MILLIS > getCurrentTime()) {
+            nextCheck -= DAY_MILLIS;
+          }
         }
       };
       triggering.setContext(context);
