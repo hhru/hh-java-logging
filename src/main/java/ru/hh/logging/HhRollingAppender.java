@@ -230,17 +230,13 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
 
     if (getTriggeringPolicy() == null) {
       DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent> triggering = new DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent>() {
-        private boolean firstCheck = true;
         private final long DAY_MILLIS = 24 * 60 * 60 * 1000;
         @Override
         protected void computeNextCheck() {
           super.computeNextCheck();
           nextCheck += calcOffset();
-          if (firstCheck) {
-            if (nextCheck - DAY_MILLIS > getCurrentTime()) {
-              nextCheck -= DAY_MILLIS;
-            }
-            firstCheck = false;
+          if (nextCheck - DAY_MILLIS > getCurrentTime()) {
+            nextCheck -= DAY_MILLIS;
           }
         }
       };
