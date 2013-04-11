@@ -37,6 +37,12 @@ import java.util.Random;
  * Property {@code $log.collect.packaging.info} Collect packaging info when logging, sometimes
  * causes big overhead. Default is provided by logback (expected to be always true).
  *
+ * Property {@code $log.roll.initial.delay.max} Max value for random delay before the log rolling process starts in seconds. Default 120.
+ *
+ * Property {@code $log.roll.next.delay.max} Max value for random delay between rolling individual logs in seconds. Default 6.
+ *
+ * Property {@code $log.roll.next.delay.min} Max value for random delay between rolling individual logs in seconds. Default 4.
+ *
  */
 public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
 
@@ -49,6 +55,10 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
 
   public static final boolean DEFAULT_IMMEDIATE_FLUSH = false;
   public static final boolean DEFAULT_COMPRESS = false;
+
+  public static final int DEFAULT_MAX_INITIAL_ROLL_DELAY_SECONDS = 1200; // 20 minutes
+  public static final int DEFAULT_MAX_NEXT_ROLL_DELAY_SECONDS = 6; // up to 6 seconds betweek log rolls
+  public static final int DEFAULT_MIN_NEXT_ROLL_DELAY_SECONDS = 4; // 4 seconds min between log rolls
 
   private Integer minIndex;
   private Integer maxIndex;
@@ -64,23 +74,9 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
   private String fileNamePattern = "%d{yyyy-MM-dd}";
   private String pattern;
 
-  // up to 10 mins random offset to start all rolling on the current
-  // box. Needed to avoid simultaneous log rolling on all boxes. Each
-  // next appender increases offset value to have a different start
-  // time in different appenders.
-  private static long nextAppenderRollOffset = new Random().nextInt(600*1000); // 600 seconds
-  // counter used to initialize offset for each logger with a different value
+  private static Long nextAppenderRollOffset;
 
-  private static final long MIN_ADDITIONAL_ROLL_OFFSET = 1000; // 1 second
-
-  private final long rollOffset;
-
-  public HhRollingAppender() {
-    synchronized (HhRollingAppender.class) {
-      rollOffset = nextAppenderRollOffset;
-      nextAppenderRollOffset += MIN_ADDITIONAL_ROLL_OFFSET + new Random(nextAppenderRollOffset).nextInt(1000);
-    }
-  }
+  private long rollOffset;
 
   public Integer getMinIndex() {
     return minIndex;
@@ -202,6 +198,32 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
 
     final String propPattern = context.getProperty("log.pattern");
     final String propPackagingInfo = context.getProperty("log.collect.packaging.info");
+
+    int initialRollMaxSeconds = calcParameter(null, "log.roll.initial.delay.max", DEFAULT_MAX_INITIAL_ROLL_DELAY_SECONDS);
+    int nextLogRollMaxSeconds = calcParameter(null, "log.roll.next.delay.max", DEFAULT_MAX_NEXT_ROLL_DELAY_SECONDS);
+    int nextLogRollMinSeconds = calcParameter(null, "log.roll.next.delay.min", DEFAULT_MIN_NEXT_ROLL_DELAY_SECONDS);
+
+    if (initialRollMaxSeconds < 1) {
+      addWarn("Max initial delay for rolling logs is less than a second, setting to one second");
+      initialRollMaxSeconds = 1;
+    }
+
+    if (nextLogRollMaxSeconds < 1) {
+      addWarn("Max delay between rolling log files is less than a second, setting to one second");
+      nextLogRollMaxSeconds = 1;
+    }
+
+    if (nextLogRollMinSeconds >= nextLogRollMaxSeconds || nextLogRollMinSeconds < 0) {
+      nextLogRollMinSeconds = nextLogRollMaxSeconds - 1;
+      addWarn("Setting minimum delay between rolling log files to " + nextLogRollMinSeconds + " seconds");
+    }
+    synchronized (HhRollingAppender.class) {
+      if (nextAppenderRollOffset == null) {
+        nextAppenderRollOffset = (long) new Random().nextInt(initialRollMaxSeconds * 1000);
+      }
+      rollOffset = nextAppenderRollOffset;
+      nextAppenderRollOffset += nextLogRollMinSeconds + new Random(nextAppenderRollOffset).nextInt((nextLogRollMaxSeconds - nextLogRollMinSeconds) * 1000);
+    }
 
     if (fileName == null) {
       Preconditions.checkArgument(
