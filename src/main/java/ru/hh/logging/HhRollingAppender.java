@@ -15,34 +15,33 @@ import java.util.Random;
 /**
  * Is a combo of {@link RollingFileAppender}, {@link FixedWindowRollingPolicy},
  * {@link DefaultTimeBasedFileNamingAndTriggeringPolicy}, {@link TimeBasedRollingPolicy}.
- *
+ * <p/>
  * <p>Main file is set to {@code $log.dir/appendername.log}. Rolled file is set to {@code $log.dir/appendername.%i.gz}.
  * Layout pattern is set to {@code $log.pattern}.
- *
+ * <p/>
  * <p>Other properties, same value for all appenders, but can be overriden by appender attribute (see setter methods).
  * If not specified as a property or an attribute in logback config, default value is used.
- *
+ * <p/>
  * Property {@code $log.index.min} See FixedWindowRollingPolicy. Default 1.
- *
+ * <p/>
  * Property {@code $log.index.max} See FixedWindowRollingPolicy. Default 1.
- *
+ * <p/>
  * Property {@code $log.roll.hour} Start roll within 10 min after roll.hour roll.minute. Default hour 0.
- *
+ * <p/>
  * Property {@code $log.roll.minute} Start roll within 10 min after roll.hour roll.minute. Default minute 0.
- *
+ * <p/>
  * Property {@code $log.roll.compress} To compress or not to compress ? Default false.
- *
+ * <p/>
  * Property {@code $log.immediate.flush} Sync log to disk for each log line. Default false.
- *
+ * <p/>
  * Property {@code $log.collect.packaging.info} Collect packaging info when logging, sometimes
  * causes big overhead. Default is provided by logback (expected to be always true).
- *
+ * <p/>
  * Property {@code $log.roll.initial.delay.max} Max value for random delay before the log rolling process starts in seconds. Default 1200.
- *
+ * <p/>
  * Property {@code $log.roll.next.delay.max} Max value for random delay between rolling individual logs in seconds. Default 6.
- *
+ * <p/>
  * Property {@code $log.roll.next.delay.min} Max value for random delay between rolling individual logs in seconds. Default 4.
- *
  */
 public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
 
@@ -53,7 +52,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
   public static final int DEFAULT_ROLL_HOUR = 0;
   public static final int DEFAULT_ROLL_MINUTE = 0;
 
-  public static final boolean DEFAULT_IMMEDIATE_FLUSH = false;
+  public static final boolean DEFAULT_IMMEDIATE_FLUSH = true; // by developers request
   public static final boolean DEFAULT_COMPRESS = false;
 
   public static final int DEFAULT_MAX_INITIAL_ROLL_DELAY_SECONDS = 1200; // 20 minutes
@@ -77,6 +76,8 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
   private static Long nextAppenderRollOffset;
 
   private long rollOffset;
+
+  private Thread shutdownHook = null;
 
   public Integer getMinIndex() {
     return minIndex;
@@ -253,6 +254,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     if (getTriggeringPolicy() == null) {
       DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent> triggering = new DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent>() {
         private final long DAY_MILLIS = 24 * 60 * 60 * 1000;
+
         @Override
         protected void computeNextCheck() {
           super.computeNextCheck();
@@ -301,6 +303,23 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     }
 
     super.start();
-  }
 
+    synchronized (this) {
+      if (shutdownHook == null) {
+        shutdownHook = new Thread() {
+          @Override
+          public void run() {
+            HhRollingAppender.this.stop();
+          }
+        };
+        try {
+          Runtime.getRuntime().addShutdownHook(shutdownHook);
+        } catch (IllegalStateException ex) {
+          addWarn("Attempt to start logging during shutdown", ex);
+        } catch (SecurityException ex) {
+          addWarn("Security manager does not allow setting shutdown hooks, please add RuntimePermission \"shutdownHooks\" for " + HhRollingAppender.class.getName());
+        }
+      }
+    }
+  }
 }
