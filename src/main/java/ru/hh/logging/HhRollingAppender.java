@@ -157,10 +157,6 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     this.pattern = pattern;
   }
 
-  private long calcOffset() {
-    return rollOffset + (rollHour * 60 + rollMinute) * 60 * 1000;
-  }
-
   private int calcParameter(Integer parameter, String propName, int defaultValue) {
     final String propValue = context.getProperty(propName);
     if (parameter != null) {
@@ -258,9 +254,14 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
         @Override
         protected void computeNextCheck() {
           super.computeNextCheck();
-          nextCheck += calcOffset();
-          if (nextCheck - DAY_MILLIS > getCurrentTime()) {
-            nextCheck -= DAY_MILLIS;
+          long nowMillis = getCurrentTime();
+          if (nextCheck < nowMillis) {
+            nextCheck = nowMillis + rollOffset; // use jitter for old logs
+          } else {
+            nextCheck += rollOffset + (rollHour * 60 + rollMinute) * 60 * 1000;
+            if (nextCheck - DAY_MILLIS > nowMillis) {
+              nextCheck -= DAY_MILLIS;
+            }
           }
         }
       };
