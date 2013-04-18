@@ -10,7 +10,7 @@
 
   <groupId>ru.hh.logging</groupId>
   <artifactId>hh-java-logging</artifactId>
-  <version>1.10-SNAPSHOT</version>
+  <version>1.9.3</version>
   <name>Logback appenders etc</name>
 
   <properties>
