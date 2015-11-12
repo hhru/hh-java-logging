@@ -8,7 +8,6 @@ import ch.qos.logback.core.rolling.DefaultTimeBasedFileNamingAndTriggeringPolicy
 import ch.qos.logback.core.rolling.FixedWindowRollingPolicy;
 import ch.qos.logback.core.rolling.RollingFileAppender;
 import ch.qos.logback.core.rolling.TimeBasedRollingPolicy;
-import com.google.common.base.Preconditions;
 import org.apache.commons.lang.StringUtils;
 import java.util.Random;
 
@@ -223,10 +222,10 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     }
 
     if (fileName == null) {
-      Preconditions.checkArgument(
-          !getName().matches(".*(\\.\\.|/|\\\\).*"),
-          "appender name cannot have filesystem path elements: %s", getName()
-      );
+      if (getName().matches(".*(\\.\\.|/|\\\\).*")) {
+        throw new IllegalArgumentException(
+                String.format("appender name cannot have filesystem path elements: %s", getName()));
+      }
       setFile(String.format("%s/%s.log", propLogdir, getName()));
     }
 
