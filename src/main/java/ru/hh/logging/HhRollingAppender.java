@@ -8,7 +8,7 @@ import ch.qos.logback.core.rolling.DefaultTimeBasedFileNamingAndTriggeringPolicy
 import ch.qos.logback.core.rolling.FixedWindowRollingPolicy;
 import ch.qos.logback.core.rolling.RollingFileAppender;
 import ch.qos.logback.core.rolling.TimeBasedRollingPolicy;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import java.util.Random;
 
 /**
@@ -161,7 +161,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
     if (parameter != null) {
       return parameter;
     } else if (!StringUtils.isBlank(propValue)) {
-      return Integer.valueOf(propValue.trim());
+      return Integer.parseInt(propValue.trim());
     } else {
       return defaultValue;
     }
@@ -218,7 +218,8 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
         nextAppenderRollOffset = (long) new Random().nextInt(initialRollMaxSeconds * 1000);
       }
       rollOffset = nextAppenderRollOffset;
-      nextAppenderRollOffset += nextLogRollMinSeconds + new Random(nextAppenderRollOffset).nextInt((nextLogRollMaxSeconds - nextLogRollMinSeconds) * 1000);
+      nextAppenderRollOffset += nextLogRollMinSeconds
+          + new Random(nextAppenderRollOffset).nextInt((nextLogRollMaxSeconds - nextLogRollMinSeconds) * 1000);
     }
 
     if (fileName == null) {
@@ -248,7 +249,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
 
     if (getTriggeringPolicy() == null) {
       DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent> triggering = new DefaultTimeBasedFileNamingAndTriggeringPolicy<ILoggingEvent>() {
-        private final long DAY_MILLIS = 24 * 60 * 60 * 1000;
+        private static final long DAY_MILLIS = 24 * 60 * 60 * 1000;
 
         @Override
         protected void computeNextCheck() {
@@ -257,7 +258,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
           if (nextCheck < nowMillis) {
             nextCheck = nowMillis + rollOffset; // use jitter for old logs
           } else {
-            nextCheck += rollOffset + (rollHour * 60 + rollMinute) * 60 * 1000;
+            nextCheck += rollOffset + (rollHour * 60L + rollMinute) * 60 * 1000;
             if (nextCheck - DAY_MILLIS > nowMillis) {
               nextCheck -= DAY_MILLIS;
             }
@@ -265,7 +266,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
         }
       };
       triggering.setContext(context);
-      TimeBasedRollingPolicy<ILoggingEvent> rolling = new TimeBasedRollingPolicy<ILoggingEvent>();
+      TimeBasedRollingPolicy<ILoggingEvent> rolling = new TimeBasedRollingPolicy<>();
       rolling.setContext(context);
       rolling.setTimeBasedFileNamingAndTriggeringPolicy(triggering);
       rolling.setFileNamePattern(fileNamePattern);
@@ -280,7 +281,7 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
       if (pattern == null) {
         pattern = propPattern;
       }
-      LayoutWrappingEncoder<ILoggingEvent> encoder = new LayoutWrappingEncoder<ILoggingEvent>();
+      LayoutWrappingEncoder<ILoggingEvent> encoder = new LayoutWrappingEncoder<>();
       encoder.setContext(context);
       PatternLayout layout = new PatternLayout();
       layout.setContext(context);
@@ -316,7 +317,8 @@ public class HhRollingAppender extends RollingFileAppender<ILoggingEvent> {
         } catch (IllegalStateException ex) {
           addWarn("Attempt to start logging during shutdown", ex);
         } catch (SecurityException ex) {
-          addWarn("Security manager does not allow setting shutdown hooks, please add RuntimePermission \"shutdownHooks\" for " + HhRollingAppender.class.getName());
+          addWarn("Security manager does not allow setting shutdown hooks, please add RuntimePermission \"shutdownHooks\" for "
+              + HhRollingAppender.class.getName());
         }
       }
     }
