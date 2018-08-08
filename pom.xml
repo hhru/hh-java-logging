@@ -10,7 +10,7 @@
 
     <groupId>ru.hh.logging</groupId>
     <artifactId>hh-java-logging</artifactId>
-    <version>1.14</version>
+    <version>1.15-SNAPSHOT</version>
     <name>Logback appenders etc</name>
 
     <properties>
@@ -119,7 +119,7 @@
     <scm>
         <connection>scm:git:git@github.com:hhru/hh-java-logging.git</connection>
         <developerConnection>scm:git:git@github.com:hhru/hh-java-logging.git</developerConnection>
-        <tag>hh-java-logging-1.14</tag>
+        <tag>HEAD</tag>
     </scm>
 
 </project>
