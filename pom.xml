@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -11,7 +10,7 @@
 
     <groupId>ru.hh.logging</groupId>
     <artifactId>hh-java-logging</artifactId>
-    <version>1.14-SNAPSHOT</version>
+    <version>1.14</version>
     <name>Logback appenders etc</name>
 
     <properties>
@@ -120,7 +119,7 @@
     <scm>
         <connection>scm:git:git@github.com:hhru/hh-java-logging.git</connection>
         <developerConnection>scm:git:git@github.com:hhru/hh-java-logging.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>hh-java-logging-1.14</tag>
     </scm>
 
 </project>
